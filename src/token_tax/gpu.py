@@ -52,11 +52,11 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
                         start=time.perf_counter(); model(**inputs,use_cache=True); torch.cuda.synchronize(); samples.append((time.perf_counter()-start)*1000)
                 samples.sort(); p95=samples[min(int(.95*len(samples)),len(samples)-1)]
                 records.append({"model_id":model_id,"model_revision":revision,"resolved_model_revision":getattr(model.config,"_commit_hash",None),"language_code":lang,"language":label,"requested_sequence_length":int(seq_len),"actual_nonpad_tokens":actual,"batch_size":int(batch),"precision":str(dtype).replace("torch.",""),"trials":trials,"prefill_latency_ms_median":float(np.median(samples)),"prefill_latency_ms_p95":float(p95),"prefill_latency_ms_mean":float(np.mean(samples)),"peak_allocated_bytes":int(torch.cuda.max_memory_allocated()),"peak_reserved_bytes":int(torch.cuda.max_memory_reserved()),"throughput_nonpad_tokens_per_second":float(int(batch)*actual/(float(np.median(samples))/1000)), "theoretical_kv_cache_bytes":2*int(batch)*int(seq_len)*layers*heads*dim*bytes_per,"kv_cache_status":"theoretical_from_model_config"})
-    stamp=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     csv_path=output/f"gpu_metrics_{stamp}.csv"
     with csv_path.open("w",newline="",encoding="utf-8") as f:
         writer=csv.DictWriter(f,fieldnames=list(records[0])); writer.writeheader(); writer.writerows(records)
-    metadata={"run_id":stamp,"status":"measured","experiment":"native_model_prefill","environment":environment_metadata(),"model":{"id":model_id,"requested_revision":revision,"resolved_revision":getattr(model.config,"_commit_hash",None),"tokenizer_resolved_revision":getattr(tok,"init_kwargs",{}).get("_commit_hash"),"config":model.config.to_dict()},"records":len(records),"warmup_runs":warmups,"timed_runs":trials,"results_file":str(csv_path)}
+    metadata={"run_id":stamp,"status":"measured","experiment":"native_model_prefill","environment":environment_metadata(),"model":{"id":model_id,"requested_revision":revision,"resolved_revision":getattr(model.config,"_commit_hash",None),"tokenizer_resolved_revision":getattr(tok,"init_kwargs",{}).get("_commit_hash"),"config":model.config.to_dict()},"dataset":{"id":dc.get("name","Muennighoff/flores200"),"split":dc.get("split","dev")},"records":len(records),"warmup_runs":warmups,"timed_runs":trials,"results_file":str(csv_path)}
     meta_path=output/f"gpu_metadata_{stamp}.json"; meta_path.write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding="utf-8")
     del model; torch.cuda.empty_cache()
     return csv_path,meta_path
