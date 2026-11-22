@@ -51,7 +51,8 @@ def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) 
     for spec in specs:
         for lang in languages:
             vals = [r["tokens"] for r in records if r["tokenizer_id"] == spec["id"] and r["language_code"] == lang and r["normalization"] == "none"]
-            summary[f"{spec['id']}::{lang}"] = summarize_token_counts(vals)
+            english = [r["tokens"] for r in records if r["tokenizer_id"] == spec["id"] and r["language_code"] == "eng_Latn" and r["normalization"] == "none"]
+            summary[f"{spec['id']}::{lang}"] = summarize_token_counts(vals, english if lang != "eng_Latn" and len(vals) == len(english) else None)
     meta = {"run_id": stamp, "status": "measured", "experiment": "tokenizer_comparison", "environment": environment_metadata(), "row_count": len(rows), "record_count": len(records), "summary": summary, "config": config}
     json_path = output / f"run_metadata_{stamp}.json"; json_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     return csv_path, json_path
