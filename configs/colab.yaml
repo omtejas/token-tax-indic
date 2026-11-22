@@ -1,0 +1,6 @@
+runtime:
+  device: auto
+  install_project: true
+  clone_url: https://github.com/omtejas/token-tax-indic.git
+  repo_dir: /content/token-tax-indic
+  output_dir: /content/token-tax-indic/results
