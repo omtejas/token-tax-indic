@@ -23,7 +23,17 @@ def environment_metadata() -> dict:
             gpu.update(name=props.name, total_vram_bytes=props.total_memory, cuda_version=torch.version.cuda)
     except Exception as exc:
         gpu["error"] = str(exc)
-    return {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "python": platform.python_version(), "platform": platform.platform(), "packages": packages, "gpu": gpu}
+    try: git_revision = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL).strip()
+    except Exception: git_revision = None
+    return {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "git_revision": git_revision, "python": platform.python_version(), "platform": platform.platform(), "packages": packages, "gpu": gpu}
+
+
+def _dataset_revision(dataset_id: str):
+    try:
+        from huggingface_hub import HfApi
+        return HfApi().dataset_info(dataset_id).sha
+    except Exception:
+        return None
 
 
 def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) -> tuple[Path, Path]:
@@ -44,7 +54,7 @@ def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) 
                     text = normalize_text(original, form)
                     count = count_tokens(tokenizer, text)
                     records.append({"sentence_id": row["sentence_id"], "tokenizer_id": spec["id"], "tokenizer_model": spec["model_id"], "tokenizer_revision": getattr(tokenizer, "init_kwargs", {}).get("_commit_hash", spec.get("revision", "main")), "language_code": lang, "language": languages[lang], "normalization": form, "text": text, "characters": len(text), "whitespace_words": len(text.split()), "length_bucket": "short" if len(text.split()) <= 10 else ("medium" if len(text.split()) <= 20 else "long"), "tokens": count, "tokens_per_character": count / max(len(text), 1), "tokens_per_word": count / max(len(text.split()), 1)})
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     csv_path = output / f"tokenizer_metrics_{stamp}.csv"
     with csv_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=list(records[0]) if records else ["sentence_id", "tokenizer_id", "language_code", "tokens"]); writer.writeheader(); writer.writerows(records)
@@ -66,6 +76,6 @@ def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) 
             report = context_window_capacity(counts, context_window)
             report["effective_context_loss_pct_vs_english"] = (100 * (english_capacity["complete_sentences"] - report["complete_sentences"]) / english_capacity["complete_sentences"]) if lang != "eng_Latn" and english_capacity["complete_sentences"] else 0.0
             context_summary[f"{spec['id']}::{lang}"] = report
-    meta = {"run_id": stamp, "status": "measured", "experiment": "tokenizer_comparison", "environment": environment_metadata(), "row_count": len(rows), "record_count": len(records), "summary": summary, "context_efficiency": context_summary, "config": config}
+    meta = {"run_id": stamp, "status": "measured", "experiment": "tokenizer_comparison", "environment": environment_metadata(), "row_count": len(rows), "record_count": len(records), "summary": summary, "context_efficiency": context_summary, "dataset": {"id": data_cfg.get("name", "Muennighoff/flores200"), "split": data_cfg.get("split", "dev"), "revision": _dataset_revision(data_cfg.get("name", "Muennighoff/flores200"))}, "config": config}
     json_path = output / f"run_metadata_{stamp}.json"; json_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     return csv_path, json_path
