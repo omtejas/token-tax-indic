@@ -39,7 +39,7 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
     records=[]; cfg=model.config
     layers=int(cfg.num_hidden_layers); heads=int(getattr(cfg,"num_key_value_heads",cfg.num_attention_heads)); dim=int(cfg.hidden_size)//int(cfg.num_attention_heads); bytes_per=2 if dtype in (torch.float16,torch.bfloat16) else 4
     for lang, label in languages.items():
-        corpus="\\n".join(r[lang] for r in rows)
+        corpus=chr(10).join(r[lang] for r in rows)
         for seq_len in lengths:
             encoded=tok(corpus,return_tensors="pt",truncation=True,max_length=int(seq_len),padding="max_length",add_special_tokens=True)
             actual=int(encoded["attention_mask"].sum().item())
