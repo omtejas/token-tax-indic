@@ -40,7 +40,7 @@ def find_failure_examples(csv_path, top_n=20):
     if not zero.empty:
         zero["failure_type"] = "nonempty_text_zero_tokens"
         frames.append(zero)
-    replacement = df[df.text.astype(str).str.contains("\\uFFFD", regex=False, na=False)].copy()
+    replacement = df[df.text.astype(str).str.contains(chr(0xFFFD), regex=False, na=False)].copy()
     if not replacement.empty:
         replacement["failure_type"] = "unicode_replacement_character"
         frames.append(replacement)
