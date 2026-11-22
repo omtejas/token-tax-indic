@@ -304,7 +304,7 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
                             record[f"{stage}_{key}"] = value
                     energy = multi_telemetry["energy_joules_estimated"]
                     record["multi_token_generation_energy_joules_per_generated_token_estimated"] = energy / generated_per_trial if energy is not None and generated_per_trial else None
-                    record["multi_token_generation_energy_status"] = "estimated_from_nvidia_smi_power" if record["multi_token_decode_energy_joules_per_generated_token_estimated"] is not None else "unavailable"
+                    record["multi_token_generation_energy_status"] = "estimated_from_nvidia_smi_power" if record["multi_token_generation_energy_joules_per_generated_token_estimated"] is not None else "unavailable"
                     records.append(record)
                 del inputs
                 torch.cuda.empty_cache()
@@ -320,7 +320,7 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
         "peak_allocated_delta_bytes",
         "prefill_gpu_utilization_mean_percent",
         "multi_token_generation_gpu_utilization_mean_percent",
-        "multi_token_decode_energy_joules_per_generated_token_estimated",
+        "multi_token_generation_energy_joules_per_generated_token_estimated",
     ]
     summaries = summarize_repetitions(records, summary_metrics)
     summary_csv = output / f"gpu_repetition_summary_{stamp}.csv"
