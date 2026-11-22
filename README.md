@@ -12,7 +12,7 @@ A reproducible study of equivalent English, Hindi, Kannada, Tamil, and Telugu te
 4. How sensitive are results to Unicode normalization and input length?
 
 ## Method
-- Dataset: FLORES-200, language configs for English, Hindi, Kannada, Tamil and Telugu. Review its CC-BY-SA 4.0 terms and cite NLLB/FLORES. The loader validates sentence IDs before joining.
+- Dataset: FLORES-200 consolidated Parquet mirror (`yash9439/flores200`), with English, Hindi, Kannada, Tamil and Telugu columns aligned in the same row. Review its CC-BY-SA 4.0 terms and cite NLLB/FLORES. The loader validates sentence IDs before joining.
 - Tokenizers: five public Hugging Face tokenizers configured in `configs/experiment.yaml`. Verify revisions, licenses and language coverage before the final run.
 - GPU: model and native tokenizer pair only. Cross-model differences are system-level, not isolated tokenizer causal effects.
 - Ablations: Unicode normalization (none/NFC) and sentence length groups.
@@ -63,7 +63,7 @@ The initial hardware target is an NVIDIA GeForce RTX 4050 Laptop GPU with 6 GB V
 - `paper/`: manuscript scaffold.
 
 ## Data and model licensing
-The code licence does not relicense datasets, pretrained models or tokenizer vocabularies. FLORES-200 is CC-BY-SA 4.0; preserve attribution and share-alike obligations. Check each model card's own terms. Do not commit model weights or corpus dumps.
+The code licence does not relicense datasets, pretrained models or tokenizer vocabularies. The source data derives from FLORES-200 (CC-BY-SA 4.0); preserve original NLLB/FLORES attribution and share-alike obligations, and verify the mirror's provenance before publication. Check each model card's own terms. Do not commit model weights or corpus dumps.
 
 ## Reproducibility
 Each run should retain its git revision, exact dataset/model/tokenizer revisions, config, software versions, GPU name/VRAM, precision, batch size, input lengths, warm-up and timed trial counts. Label metrics as measured, estimated or unavailable. Energy metrics are omitted unless reliable telemetry exists. API cost is simulated only with a declared matching model/tokenizer rate.
