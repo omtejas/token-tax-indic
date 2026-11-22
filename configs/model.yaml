@@ -1,10 +1,9 @@
-# Set a model only after checking access, licence, architecture and tokenizer compatibility.
 model:
-  model_id: distilbert/distilgpt2
+  model_id: Qwen/Qwen2.5-0.5B
   revision: main
   task: causal-lm
   torch_dtype: float16
-  device: auto
+  device: cuda
   trust_remote_code: false
   load_in_4bit: false
   max_new_tokens: 1
@@ -12,6 +11,6 @@ model:
   batch_size: 1
   enabled: false
 notes:
-  - This default is a small smoke-test candidate, not a finalized scientific model.
-  - Do not substitute a tokenizer from another model family.
-  - Keep 1 GB or more of VRAM headroom where possible.
+  - Small model selected as an initial 6 GB VRAM candidate; verify memory on device.
+  - The GPU comparison uses this model only with its native tokenizer.
+  - Model and tokenizer revisions must be pinned to immutable commits for final publication.
