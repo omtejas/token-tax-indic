@@ -12,7 +12,7 @@ dataset:
     kan_Knda: Kannada
     tam_Taml: Tamil
     tel_Telu: Telugu
-  max_parallel_rows: 300
+  max_parallel_rows: 997
   streaming: true
 normalization:
   forms: [none, NFC]
