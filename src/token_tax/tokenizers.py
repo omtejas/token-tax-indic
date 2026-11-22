@@ -27,7 +27,18 @@ def load_hf_tokenizer(spec: dict[str, Any]):
         # HF cache. Force one clean retry instead of failing the whole sweep.
         if "JSON" not in str(exc) and not isinstance(exc, json.JSONDecodeError):
             raise
-        return AutoTokenizer.from_pretrained(spec["model_id"], force_download=True, **kwargs)
+        try:
+            return AutoTokenizer.from_pretrained(spec["model_id"], force_download=True, **kwargs)
+        except json.JSONDecodeError:
+            # Some Transformers/HF-cache combinations fail while parsing the
+            # tiny GPT-2 tokenizer_config.json even though vocab files are valid.
+            # The concrete tokenizer class can load the required vocab directly.
+            if spec["model_id"].lower() == "gpt2":
+                from transformers import GPT2TokenizerFast
+                return GPT2TokenizerFast.from_pretrained(
+                    spec["model_id"], force_download=True, **kwargs
+                )
+            raise
 
 
 def count_tokens(tokenizer, text: str) -> int:
