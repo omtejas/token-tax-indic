@@ -43,7 +43,7 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
             if tok.pad_token is None:
                 raise ValueError("The model tokenizer has no pad, EOS, unknown, or standard vocabulary token for fixed-length batching.")
     dtype=_dtype(mc.get("torch_dtype","float16"),torch)
-    model=AutoModelForCausalLM.from_pretrained(model_id,revision=revision,torch_dtype=dtype,low_cpu_mem_usage=True,trust_remote_code=False).to("cuda").eval()
+    model=AutoModelForCausalLM.from_pretrained(model_id,revision=revision,dtype=dtype,low_cpu_mem_usage=True,trust_remote_code=False).to("cuda").eval()
     dc=experiment_config.get("dataset",{}); language_codes, languages=resolve_languages(dc.get("languages"))
     rows=load_flores_parallel(language_codes,dc.get("split","dev"),dc.get("max_parallel_rows",300),dc.get("name","yash9439/flores200"),dc.get("streaming",True))
     bc=experiment_config.get("benchmark",{}); warmups=int(bc.get("warmup_runs",3)); trials=int(bc.get("timed_runs",20))
@@ -52,11 +52,13 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
     records=[]; cfg=model.config
     baseline_allocated=int(torch.cuda.memory_allocated())
     layers=int(cfg.num_hidden_layers); heads=int(getattr(cfg,"num_key_value_heads",cfg.num_attention_heads)); dim=int(cfg.hidden_size)//int(cfg.num_attention_heads); bytes_per=2 if dtype in (torch.float16,torch.bfloat16) else 4
+    resolved_revision=getattr(model.config,"_commit_hash",None) or _hub_model_revision(model_id,revision)
     for lang, label in languages.items():
         corpus=chr(10).join(r[lang] for r in rows)
         for seq_len in lengths:
-            encoded=tok(corpus,return_tensors="pt",truncation=True,max_length=int(seq_len),padding="max_length",add_special_tokens=True)
+            encoded=tok(corpus,return_tensors="pt",truncation=True,max_length=int(seq_len),add_special_tokens=True)
             actual=int(encoded["attention_mask"].sum().item())
+            encoded=tok.pad(encoded,padding="max_length",max_length=int(seq_len),return_tensors="pt")
             for batch in batches:
                 inputs={k:v.repeat(int(batch),1).to("cuda") for k,v in encoded.items()}
                 with torch.inference_mode():
@@ -66,12 +68,12 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
                         start=time.perf_counter(); model(**inputs,use_cache=True); torch.cuda.synchronize(); samples.append((time.perf_counter()-start)*1000)
                 samples.sort(); p95=float(np.percentile(samples,95))
                 peak_allocated=int(torch.cuda.max_memory_allocated())
-                records.append({"model_id":model_id,"model_revision":revision,"resolved_model_revision":getattr(model.config,"_commit_hash",None),"language_code":lang,"language":label,"requested_sequence_length":int(seq_len),"actual_nonpad_tokens":actual,"batch_size":int(batch),"precision":str(dtype).replace("torch.",""),"trials":trials,"prefill_latency_ms_median":float(np.median(samples)),"prefill_latency_ms_p95":float(p95),"prefill_latency_ms_mean":float(np.mean(samples)),"baseline_model_allocated_bytes":baseline_allocated,"peak_allocated_bytes":peak_allocated,"peak_allocated_delta_bytes":max(0,peak_allocated-baseline_allocated),"peak_reserved_bytes":int(torch.cuda.max_memory_reserved()),"throughput_nonpad_tokens_per_second":float(int(batch)*actual/(float(np.median(samples))/1000)), "theoretical_kv_cache_bytes":2*int(batch)*int(seq_len)*layers*heads*dim*bytes_per,"kv_cache_status":"theoretical_from_model_config"})
+                records.append({"model_id":model_id,"model_revision":revision,"resolved_model_revision":resolved_revision,"language_code":lang,"language":label,"requested_sequence_length":int(seq_len),"actual_nonpad_tokens":actual,"batch_size":int(batch),"precision":str(dtype).replace("torch.",""),"trials":trials,"prefill_latency_ms_median":float(np.median(samples)),"prefill_latency_ms_p95":float(p95),"prefill_latency_ms_mean":float(np.mean(samples)),"baseline_model_allocated_bytes":baseline_allocated,"peak_allocated_bytes":peak_allocated,"peak_allocated_delta_bytes":max(0,peak_allocated-baseline_allocated),"peak_reserved_bytes":int(torch.cuda.max_memory_reserved()),"throughput_nonpad_tokens_per_second":float(int(batch)*actual/(float(np.median(samples))/1000)), "theoretical_kv_cache_bytes":2*int(batch)*int(seq_len)*layers*heads*dim*bytes_per,"kv_cache_status":"theoretical_from_model_config"})
     stamp=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     csv_path=output/f"gpu_metrics_{stamp}.csv"
     with csv_path.open("w",newline="",encoding="utf-8") as f:
         writer=csv.DictWriter(f,fieldnames=list(records[0])); writer.writeheader(); writer.writerows(records)
-    metadata={"run_id":stamp,"status":"measured","experiment":"native_model_prefill","environment":environment_metadata(),"model":{"id":model_id,"requested_revision":revision,"resolved_revision":getattr(model.config,"_commit_hash",None),"tokenizer_resolved_revision":getattr(tok,"init_kwargs",{}).get("_commit_hash") or _hub_model_revision(model_id,revision),"config":model.config.to_dict()},"dataset":{"id":dc.get("name","yash9439/flores200"),"split":dc.get("split","dev"),"revision":_dataset_revision(dc.get("name","yash9439/flores200")),"rows":len(rows)},"records":len(records),"config":{"max_sequence_lengths":lengths,"batch_sizes":batches,"precision":str(dtype).replace("torch.","")},"warmup_runs":warmups,"timed_runs":trials,"results_file":str(csv_path)}
+    metadata={"run_id":stamp,"status":"measured","experiment":"native_model_prefill","environment":environment_metadata(),"model":{"id":model_id,"requested_revision":revision,"resolved_revision":resolved_revision,"tokenizer_resolved_revision":getattr(tok,"init_kwargs",{}).get("_commit_hash") or _hub_model_revision(model_id,revision),"config":model.config.to_dict()},"dataset":{"id":dc.get("name","yash9439/flores200"),"split":dc.get("split","dev"),"revision":_dataset_revision(dc.get("name","yash9439/flores200")),"rows":len(rows)},"records":len(records),"config":{"max_sequence_lengths":lengths,"batch_sizes":batches,"precision":str(dtype).replace("torch.","")},"warmup_runs":warmups,"timed_runs":trials,"results_file":str(csv_path)}
     meta_path=output/f"gpu_metadata_{stamp}.json"; meta_path.write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding="utf-8")
     del model; torch.cuda.empty_cache()
     return csv_path,meta_path
