@@ -7,6 +7,10 @@ from token_tax.statistics import paired_bootstrap_mean_ci
 from token_tax.costs import estimate_api_input_cost
 from token_tax.data import resolve_languages
 
+def test_import_has_no_cli_side_effect():
+    import token_tax
+    assert token_tax.__version__ == "0.1.0"
+
 def test_normalization_nfc():
     assert normalize_text("é", "NFC") == "é"
 
