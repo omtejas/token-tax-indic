@@ -1,0 +1,58 @@
+project:
+  name: token-tax-indic
+  seed: 42
+  output_dir: results
+  run_name: local-baseline
+ dataset:
+  name: flores200
+  config: all
+  split: dev
+  languages:
+    eng_Latn: English
+    hin_Deva: Hindi
+    kan_Knda: Kannada
+    tam_Taml: Tamil
+    tel_Telu: Telugu
+  max_parallel_rows: 300
+  streaming: true
+  trust_remote_code: false
+normalization:
+  forms: [none, NFC]
+  preserve_original: true
+tokenizers:
+  # Replace/add pinned, verified model IDs after checking their licences and language coverage.
+  candidates:
+    - id: gpt2
+      label: GPT-2 BPE
+      family: huggingface
+      model_id: gpt2
+      revision: main
+    - id: bert-base-multilingual-cased
+      label: mBERT WordPiece
+      family: huggingface
+      model_id: bert-base-multilingual-cased
+      revision: main
+    - id: xlm-roberta-base
+      label: XLM-R SentencePiece
+      family: huggingface
+      model_id: xlm-roberta-base
+      revision: main
+    - id: google-gemma-2b
+      label: Gemma 2B tokenizer
+      family: huggingface
+      model_id: google/gemma-2-2b
+      revision: main
+      gated: true
+    - id: ai4bharat-indicbert
+      label: IndicBERT tokenizer
+      family: huggingface
+      model_id: ai4bharat/IndicBERTv2-MLM-only
+      revision: main
+      trust_remote_code: false
+benchmark:
+  warmup_runs: 3
+  timed_runs: 20
+  batch_sizes: [1, 2, 4]
+  max_sequence_lengths: [128, 256, 512]
+  synchronize_cuda: true
+  clear_cache_between_trials: false
