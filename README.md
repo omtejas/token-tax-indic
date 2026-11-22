@@ -27,6 +27,7 @@ py -3.14 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 pip install -r requirements.txt
+pip install torch --index-url https://download.pytorch.org/whl/cu130
 pip install -e .
 python -m pytest
 python -m token_tax.cli gpu-info
@@ -34,7 +35,7 @@ python -m token_tax.cli gpu-info
 
 If an optional dependency has no Python 3.14 wheel in your environment, use Python 3.12 in a separate environment; do not alter system Python.
 
-Install PyTorch using the official selector: https://pytorch.org/get-started/locally/ . The CUDA version printed by `nvidia-smi` is the driver's supported runtime level; it is not an instruction to install the CUDA Toolkit separately.
+The setup script selects the CUDA 13.0 PyTorch wheel for the reported NVIDIA driver. The CUDA version printed by `nvidia-smi` is the driver's supported runtime level; it is not an instruction to install the CUDA Toolkit separately. See the [official PyTorch selector](https://pytorch.org/get-started/locally/) if a different wheel is required.
 
 ## One-command Windows workflow
 Run these from PowerShell in the cloned repository:
