@@ -54,3 +54,14 @@ def estimate_kv_cache_bytes(batch_size: int, sequence_length: int, layers: int, 
     if any(v <= 0 for v in vals):
         raise ValueError("All KV-cache dimensions and element size must be positive")
     return 2 * batch_size * sequence_length * layers * kv_heads * head_dim * bytes_per_element
+
+
+def context_window_capacity(token_counts: Sequence[int], context_window: int) -> dict:
+    """Count complete ordered sentences fitting in a fixed token budget."""
+    if context_window <= 0: raise ValueError("context_window must be positive")
+    used=0; sentences=0
+    for count in token_counts:
+        if count < 0: raise ValueError("Token counts cannot be negative")
+        if used + count > context_window: break
+        used += count; sentences += 1
+    return {"context_window_tokens":context_window,"complete_sentences":sentences,"used_tokens":used,"unused_tokens":context_window-used,"utilization":used/context_window}
