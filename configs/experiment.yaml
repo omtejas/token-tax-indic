@@ -4,7 +4,7 @@ project:
   output_dir: results
   run_name: local-baseline
 dataset:
-  name: Muennighoff/flores200
+  name: yash9439/flores200
   split: dev
   languages:
     eng_Latn: English
