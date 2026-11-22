@@ -40,6 +40,16 @@ def load_hf_tokenizer(spec: dict[str, Any]):
         from transformers import XLMRobertaTokenizerFast
         vocab_file = hf_hub_download(model_id, "sentencepiece.bpe.model", revision=kwargs["revision"])
         return XLMRobertaTokenizerFast(vocab_file=vocab_file)
+    if tokenizer_id.startswith("qwen") or model_id.lower().startswith("qwen/"):
+        from huggingface_hub import hf_hub_download
+        from transformers import PreTrainedTokenizerFast
+        tokenizer_file = hf_hub_download(model_id, "tokenizer.json", revision=kwargs["revision"])
+        return PreTrainedTokenizerFast(tokenizer_file=tokenizer_file)
+    if tokenizer_id == "indicbertv2" or "indicbert" in model_id.lower():
+        from huggingface_hub import hf_hub_download
+        from transformers import BertTokenizerFast
+        vocab_file = hf_hub_download(model_id, "vocab.txt", revision=kwargs["revision"])
+        return BertTokenizerFast(vocab_file=vocab_file, do_lower_case=False)
     try:
         return AutoTokenizer.from_pretrained(spec["model_id"], **kwargs)
     except (json.JSONDecodeError, ValueError) as exc:
