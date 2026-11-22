@@ -3,7 +3,7 @@ import csv, json, time
 from datetime import datetime, timezone
 from pathlib import Path
 import numpy as np
-from .data import load_flores_parallel, LANGUAGES
+from .data import load_flores_parallel, LANGUAGES, resolve_languages
 from .tokenizers import load_hf_tokenizer
 from .benchmark import environment_metadata
 
@@ -31,9 +31,8 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
     tok=load_hf_tokenizer({"model_id":model_id,"revision":revision,"trust_remote_code":False})
     dtype=_dtype(mc.get("torch_dtype","float16"),torch)
     model=AutoModelForCausalLM.from_pretrained(model_id,revision=revision,torch_dtype=dtype,low_cpu_mem_usage=True,trust_remote_code=False).to("cuda").eval()
-    dc=experiment_config.get("dataset",{}); language_config=dc.get("languages",LANGUAGES)
-    languages=language_config if isinstance(language_config,dict) else {code: LANGUAGES.get(code,code) for code in language_config}
-    rows=load_flores_parallel(list(languages),dc.get("split","dev"),dc.get("max_parallel_rows",300),dc.get("name","yash9439/flores200"))
+    dc=experiment_config.get("dataset",{}); language_codes, languages=resolve_languages(dc.get("languages"))
+    rows=load_flores_parallel(language_codes,dc.get("split","dev"),dc.get("max_parallel_rows",300),dc.get("name","yash9439/flores200"))
     bc=experiment_config.get("benchmark",{}); warmups=int(bc.get("warmup_runs",3)); trials=int(bc.get("timed_runs",20))
     lengths=bc.get("max_sequence_lengths",[128,256,512]); batches=bc.get("batch_sizes",[1])
     output=Path(output_dir or experiment_config.get("project",{}).get("output_dir","results")); output.mkdir(parents=True,exist_ok=True)
