@@ -32,7 +32,7 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
     dtype=_dtype(mc.get("torch_dtype","float16"),torch)
     model=AutoModelForCausalLM.from_pretrained(model_id,revision=revision,torch_dtype=dtype,low_cpu_mem_usage=True,trust_remote_code=False).to("cuda").eval()
     dc=experiment_config.get("dataset",{}); languages=dc.get("languages",LANGUAGES)
-    rows=load_flores_parallel(list(languages),dc.get("split","dev"),dc.get("max_parallel_rows",300),dc.get("name","Muennighoff/flores200"))
+    rows=load_flores_parallel(list(languages),dc.get("split","dev"),dc.get("max_parallel_rows",300),dc.get("name","yash9439/flores200"))
     bc=experiment_config.get("benchmark",{}); warmups=int(bc.get("warmup_runs",3)); trials=int(bc.get("timed_runs",20))
     lengths=bc.get("max_sequence_lengths",[128,256,512]); batches=bc.get("batch_sizes",[1])
     output=Path(output_dir or experiment_config.get("project",{}).get("output_dir","results")); output.mkdir(parents=True,exist_ok=True)
@@ -56,7 +56,7 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
     csv_path=output/f"gpu_metrics_{stamp}.csv"
     with csv_path.open("w",newline="",encoding="utf-8") as f:
         writer=csv.DictWriter(f,fieldnames=list(records[0])); writer.writeheader(); writer.writerows(records)
-    metadata={"run_id":stamp,"status":"measured","experiment":"native_model_prefill","environment":environment_metadata(),"model":{"id":model_id,"requested_revision":revision,"resolved_revision":getattr(model.config,"_commit_hash",None),"tokenizer_resolved_revision":getattr(tok,"init_kwargs",{}).get("_commit_hash"),"config":model.config.to_dict()},"dataset":{"id":dc.get("name","Muennighoff/flores200"),"split":dc.get("split","dev")},"records":len(records),"warmup_runs":warmups,"timed_runs":trials,"results_file":str(csv_path)}
+    metadata={"run_id":stamp,"status":"measured","experiment":"native_model_prefill","environment":environment_metadata(),"model":{"id":model_id,"requested_revision":revision,"resolved_revision":getattr(model.config,"_commit_hash",None),"tokenizer_resolved_revision":getattr(tok,"init_kwargs",{}).get("_commit_hash"),"config":model.config.to_dict()},"dataset":{"id":dc.get("name","yash9439/flores200"),"split":dc.get("split","dev")},"records":len(records),"warmup_runs":warmups,"timed_runs":trials,"results_file":str(csv_path)}
     meta_path=output/f"gpu_metadata_{stamp}.json"; meta_path.write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding="utf-8")
     del model; torch.cuda.empty_cache()
     return csv_path,meta_path
