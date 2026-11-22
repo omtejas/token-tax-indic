@@ -52,6 +52,9 @@ def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) 
     specs = config.get("tokenizers", {}).get("candidates", [])
     if len(specs) < 5:
         raise ValueError("Configure at least five tokenizer candidates for the required study")
+    tokenizer_ids = [spec.get("id") for spec in specs]
+    if any(not item for item in tokenizer_ids) or len(tokenizer_ids) != len(set(tokenizer_ids)):
+        raise ValueError("Every tokenizer candidate needs a unique, non-empty id")
     records = []
     for spec in specs:
         tokenizer = load_hf_tokenizer(spec)
