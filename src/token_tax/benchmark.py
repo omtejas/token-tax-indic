@@ -39,7 +39,9 @@ def _dataset_revision(dataset_id: str):
 def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) -> tuple[Path, Path]:
     output = Path(output_dir or config.get("project", {}).get("output_dir", "results")); output.mkdir(parents=True, exist_ok=True)
     data_cfg = config.get("dataset", {})
-    languages = list(data_cfg.get("languages", LANGUAGES))
+    language_map = data_cfg.get("languages", LANGUAGES)
+    languages = list(language_map.keys()) if isinstance(language_map, dict) else list(language_map)
+    language_names = language_map if isinstance(language_map, dict) else {code: LANGUAGES.get(code, code) for code in languages}
     rows = load_flores_parallel(languages, data_cfg.get("split", "dev"), data_cfg.get("max_parallel_rows", 300), data_cfg.get("name", "yash9439/flores200"))
     specs = config.get("tokenizers", {}).get("candidates", [])
     if len(specs) < 5:
@@ -53,7 +55,7 @@ def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) 
                 for form in config.get("normalization", {}).get("forms", ["none"]):
                     text = normalize_text(original, form)
                     count = count_tokens(tokenizer, text)
-                    records.append({"sentence_id": row["sentence_id"], "tokenizer_id": spec["id"], "tokenizer_model": spec["model_id"], "tokenizer_revision": getattr(tokenizer, "init_kwargs", {}).get("_commit_hash", spec.get("revision", "main")), "language_code": lang, "language": languages[lang], "normalization": form, "text": text, "characters": len(text), "whitespace_words": len(text.split()), "length_bucket": "short" if len(text.split()) <= 10 else ("medium" if len(text.split()) <= 20 else "long"), "tokens": count, "tokens_per_character": count / max(len(text), 1), "tokens_per_word": count / max(len(text.split()), 1)})
+                    records.append({"sentence_id": row["sentence_id"], "tokenizer_id": spec["id"], "tokenizer_model": spec["model_id"], "tokenizer_revision": getattr(tokenizer, "init_kwargs", {}).get("_commit_hash", spec.get("revision", "main")), "language_code": lang, "language": language_names.get(lang, lang), "normalization": form, "text": text, "characters": len(text), "whitespace_words": len(text.split()), "length_bucket": "short" if len(text.split()) <= 10 else ("medium" if len(text.split()) <= 20 else "long"), "tokens": count, "tokens_per_character": count / max(len(text), 1), "tokens_per_word": count / max(len(text.split()), 1)})
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     csv_path = output / f"tokenizer_metrics_{stamp}.csv"
     with csv_path.open("w", newline="", encoding="utf-8") as f:
