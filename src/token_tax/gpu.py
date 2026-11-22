@@ -29,6 +29,13 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
     if not mc.get("enabled",False): raise ValueError("Set model.enabled=true only after reviewing model licence and revision.")
     model_id=mc["model_id"]; revision=mc.get("revision","main")
     tok=load_hf_tokenizer({"model_id":model_id,"revision":revision,"trust_remote_code":False})
+    if tok.pad_token is None:
+        if tok.eos_token is not None:
+            tok.pad_token = tok.eos_token
+        elif tok.unk_token is not None:
+            tok.pad_token = tok.unk_token
+        else:
+            raise ValueError("The model tokenizer has no pad, EOS, or unknown token for fixed-length batching.")
     dtype=_dtype(mc.get("torch_dtype","float16"),torch)
     model=AutoModelForCausalLM.from_pretrained(model_id,revision=revision,torch_dtype=dtype,low_cpu_mem_usage=True,trust_remote_code=False).to("cuda").eval()
     dc=experiment_config.get("dataset",{}); language_codes, languages=resolve_languages(dc.get("languages"))
