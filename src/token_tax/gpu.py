@@ -35,7 +35,13 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
         elif tok.unk_token is not None:
             tok.pad_token = tok.unk_token
         else:
-            raise ValueError("The model tokenizer has no pad, EOS, or unknown token for fixed-length batching.")
+            vocab = tok.get_vocab()
+            for candidate in ("<|endoftext|>", "</s>", "<pad>", "[PAD]"):
+                if candidate in vocab:
+                    tok.pad_token = candidate
+                    break
+            if tok.pad_token is None:
+                raise ValueError("The model tokenizer has no pad, EOS, unknown, or standard vocabulary token for fixed-length batching.")
     dtype=_dtype(mc.get("torch_dtype","float16"),torch)
     model=AutoModelForCausalLM.from_pretrained(model_id,revision=revision,torch_dtype=dtype,low_cpu_mem_usage=True,trust_remote_code=False).to("cuda").eval()
     dc=experiment_config.get("dataset",{}); language_codes, languages=resolve_languages(dc.get("languages"))
