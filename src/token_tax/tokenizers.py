@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json
 from dataclasses import dataclass
 from typing import Any
 
@@ -15,7 +16,18 @@ def load_hf_tokenizer(spec: dict[str, Any]):
     from transformers import AutoTokenizer
     if spec.get("trust_remote_code", False):
         raise ValueError("trust_remote_code is disabled by default; review the repository code before opting in")
-    return AutoTokenizer.from_pretrained(spec["model_id"], revision=spec.get("revision", "main"), trust_remote_code=False)
+    kwargs = {
+        "revision": spec.get("revision", "main"),
+        "trust_remote_code": False,
+    }
+    try:
+        return AutoTokenizer.from_pretrained(spec["model_id"], **kwargs)
+    except (json.JSONDecodeError, ValueError) as exc:
+        # Interrupted downloads can leave an empty tokenizer_config.json in the
+        # HF cache. Force one clean retry instead of failing the whole sweep.
+        if "JSON" not in str(exc) and not isinstance(exc, json.JSONDecodeError):
+            raise
+        return AutoTokenizer.from_pretrained(spec["model_id"], force_download=True, **kwargs)
 
 
 def count_tokens(tokenizer, text: str) -> int:
