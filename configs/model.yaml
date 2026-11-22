@@ -9,7 +9,7 @@ model:
   max_new_tokens: 1
   max_input_tokens: 512
   batch_size: 1
-  enabled: false
+  enabled: true
 notes:
   - Small model selected as an initial 6 GB VRAM candidate; verify memory on device.
   - The GPU comparison uses this model only with its native tokenizer.
