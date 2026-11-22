@@ -170,6 +170,7 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
     model_id = mc["model_id"]
     revision = mc.get("revision", "main")
     tok = load_hf_tokenizer({"model_id": model_id, "revision": revision, "trust_remote_code": False})
+    tok.padding_side = "left"  # decoder-only generation with fixed-length batches
     if tok.pad_token is None:
         if tok.eos_token is not None:
             tok.pad_token = tok.eos_token
@@ -282,10 +283,10 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
                         "prefill_latency_ms_std_within_repetition": float(np.std(prefill_samples, ddof=1)) if len(prefill_samples) > 1 else None,
                         "prefill_latency_ms_p95": float(np.percentile(prefill_samples, 95)),
                         "prefill_throughput_nonpad_tokens_per_second": float(batch * actual / (float(np.median(prefill_samples)) / 1000)),
-                        "one_token_decode_latency_ms_median": float(np.median(one_token_samples)),
-                        "one_token_decode_latency_ms_p95": float(np.percentile(one_token_samples, 95)),
-                        "multi_token_decode_latency_ms_median": median_multi_ms,
-                        "multi_token_decode_latency_ms_p95": float(np.percentile(multi_samples, 95)),
+                        "one_token_generation_end_to_end_latency_ms_median": float(np.median(one_token_samples)),
+                        "one_token_generation_end_to_end_latency_ms_p95": float(np.percentile(one_token_samples, 95)),
+                        "multi_token_generation_end_to_end_latency_ms_median": median_multi_ms,
+                        "multi_token_generation_end_to_end_latency_ms_p95": float(np.percentile(multi_samples, 95)),
                         "multi_token_generated_tokens_per_second": float(generated_per_trial / (median_multi_ms / 1000)),
                         "baseline_model_allocated_bytes": baseline_allocated,
                         "peak_allocated_bytes": peak_allocated,
@@ -296,14 +297,14 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
                     }
                     for stage, telemetry_result in (
                         ("prefill", prefill_telemetry),
-                        ("one_token_decode", one_token_telemetry),
-                        ("multi_token_decode", multi_telemetry),
+                        ("one_token_generation", one_token_telemetry),
+                        ("multi_token_generation", multi_telemetry),
                     ):
                         for key, value in telemetry_result.items():
                             record[f"{stage}_{key}"] = value
                     energy = multi_telemetry["energy_joules_estimated"]
-                    record["multi_token_decode_energy_joules_per_generated_token_estimated"] = energy / generated_per_trial if energy is not None and generated_per_trial else None
-                    record["multi_token_decode_energy_status"] = "estimated_from_nvidia_smi_power" if record["multi_token_decode_energy_joules_per_generated_token_estimated"] is not None else "unavailable"
+                    record["multi_token_generation_energy_joules_per_generated_token_estimated"] = energy / generated_per_trial if energy is not None and generated_per_trial else None
+                    record["multi_token_generation_energy_status"] = "estimated_from_nvidia_smi_power" if record["multi_token_decode_energy_joules_per_generated_token_estimated"] is not None else "unavailable"
                     records.append(record)
                 del inputs
                 torch.cuda.empty_cache()
@@ -313,12 +314,12 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
     _write_csv(raw_csv, records)
     summary_metrics = [
         "prefill_latency_ms_median",
-        "one_token_decode_latency_ms_median",
-        "multi_token_decode_latency_ms_median",
+        "one_token_generation_end_to_end_latency_ms_median",
+        "multi_token_generation_end_to_end_latency_ms_median",
         "multi_token_generated_tokens_per_second",
         "peak_allocated_delta_bytes",
         "prefill_gpu_utilization_mean_percent",
-        "multi_token_decode_gpu_utilization_mean_percent",
+        "multi_token_generation_gpu_utilization_mean_percent",
         "multi_token_decode_energy_joules_per_generated_token_estimated",
     ]
     summaries = summarize_repetitions(records, summary_metrics)
