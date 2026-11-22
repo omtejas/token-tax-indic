@@ -8,6 +8,17 @@ version = "0.1.0"
 description = "Reproducible tokenizer and GPU inference cost study for Indian languages"
 readme = "README.md"
 requires-python = ">=3.10"
+dependencies = ["PyYAML>=6.0,<7"]
+
+[project.optional-dependencies]
+app = ["pandas>=2.2,<4", "plotly>=5.24,<7", "streamlit>=1.41,<2"]
+experiments = [
+  "accelerate>=1.2,<2", "datasets>=3.2,<5", "huggingface-hub>=0.27,<2",
+  "numpy>=1.26,<3", "psutil>=6,<8", "scipy>=1.13,<2", "tiktoken>=0.8,<1",
+  "tokenizers>=0.20,<1", "tqdm>=4.66,<5", "transformers>=4.48,<6",
+]
+gpu = ["torch>=2.6,<3"]
+dev = ["pytest>=8,<10"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

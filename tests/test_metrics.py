@@ -1,4 +1,7 @@
 import pytest
+import sys
+import types
+from token_tax import data
 from token_tax.metrics import normalize_text, safe_ratio, summarize_token_counts, context_capacity, context_window_capacity, estimate_kv_cache_bytes
 from token_tax.statistics import paired_bootstrap_mean_ci
 from token_tax.costs import estimate_api_input_cost
@@ -52,3 +55,17 @@ def test_resolve_language_list():
 def test_resolve_languages_rejects_duplicates():
     with pytest.raises(ValueError):
         resolve_languages(["eng_Latn", "eng_Latn"])
+
+def test_flores_loader_honors_streaming_and_validates_rows(monkeypatch):
+    observed = {}
+    def fake_load_dataset(name, *, split, streaming):
+        observed.update(name=name, split=split, streaming=streaming)
+        return [{"id": "row-1", "eng_Latn": "Hello", "hin_Deva": "नमस्ते"}]
+    monkeypatch.setitem(sys.modules, "datasets", types.SimpleNamespace(load_dataset=fake_load_dataset))
+    assert data.load_flores_parallel(["eng_Latn", "hin_Deva"], "devtest", 1, "example/flores", streaming=False) == [{"sentence_id": "row-1", "eng_Latn": "Hello", "hin_Deva": "नमस्ते"}]
+    assert observed == {"name": "example/flores", "split": "devtest", "streaming": False}
+
+def test_flores_loader_rejects_empty_translation(monkeypatch):
+    monkeypatch.setitem(sys.modules, "datasets", types.SimpleNamespace(load_dataset=lambda *args, **kwargs: [{"eng_Latn": "Hello", "hin_Deva": ""}]))
+    with pytest.raises(ValueError, match="empty or non-text"):
+        data.load_flores_parallel(["eng_Latn", "hin_Deva"], limit=1)
