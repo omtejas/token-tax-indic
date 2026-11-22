@@ -30,6 +30,16 @@ def load_hf_tokenizer(spec: dict[str, Any]):
         vocab_file = hf_hub_download(model_id or "gpt2", "vocab.json", revision=kwargs["revision"])
         merges_file = hf_hub_download(model_id or "gpt2", "merges.txt", revision=kwargs["revision"])
         return GPT2TokenizerFast(vocab_file=vocab_file, merges_file=merges_file)
+    if tokenizer_id == "mbert" or model_id == "bert-base-multilingual-cased":
+        from huggingface_hub import hf_hub_download
+        from transformers import BertTokenizerFast
+        vocab_file = hf_hub_download(model_id, "vocab.txt", revision=kwargs["revision"])
+        return BertTokenizerFast(vocab_file=vocab_file, do_lower_case=False)
+    if tokenizer_id == "xlm-roberta" or model_id == "xlm-roberta-base":
+        from huggingface_hub import hf_hub_download
+        from transformers import XLMRobertaTokenizerFast
+        vocab_file = hf_hub_download(model_id, "sentencepiece.bpe.model", revision=kwargs["revision"])
+        return XLMRobertaTokenizerFast(vocab_file=vocab_file)
     try:
         return AutoTokenizer.from_pretrained(spec["model_id"], **kwargs)
     except (json.JSONDecodeError, ValueError) as exc:
