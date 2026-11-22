@@ -12,7 +12,7 @@ A reproducible study of equivalent English, Hindi, Kannada, Tamil, and Telugu te
 4. How sensitive are results to Unicode normalization and input length?
 
 ## Method
-- Dataset: FLORES-200 consolidated Parquet mirror (`yash9439/flores200`), with English, Hindi, Kannada, Tamil and Telugu columns aligned in the same row. Review its CC-BY-SA 4.0 terms and cite NLLB/FLORES. The loader validates sentence IDs before joining.
+- Dataset: FLORES-200 consolidated Parquet mirror (`yash9439/flores200`), with English, Hindi, Kannada, Tamil and Telugu columns aligned in the same row. Review its CC-BY-SA 4.0 terms and cite NLLB/FLORES. The loader selects all five language columns from each shared row, preserving alignment by construction.
 - Tokenizers: five public Hugging Face tokenizers configured in `configs/experiment.yaml`. Verify revisions, licenses and language coverage before the final run.
 - GPU: model and native tokenizer pair only. Cross-model differences are system-level, not isolated tokenizer causal effects.
 - Ablations: Unicode normalization (none/NFC) and sentence length groups.
