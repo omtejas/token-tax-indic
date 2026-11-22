@@ -5,6 +5,7 @@ from pathlib import Path
 from importlib.metadata import PackageNotFoundError, version
 from .data import load_flores_parallel, LANGUAGES
 from .metrics import normalize_text, summarize_token_counts, context_window_capacity
+from .statistics import paired_bootstrap_mean_ci
 from .tokenizers import load_hf_tokenizer, count_tokens
 
 
@@ -53,6 +54,8 @@ def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) 
             vals = [r["tokens"] for r in records if r["tokenizer_id"] == spec["id"] and r["language_code"] == lang and r["normalization"] == "none"]
             english = [r["tokens"] for r in records if r["tokenizer_id"] == spec["id"] and r["language_code"] == "eng_Latn" and r["normalization"] == "none"]
             summary[f"{spec['id']}::{lang}"] = summarize_token_counts(vals, english if lang != "eng_Latn" and len(vals) == len(english) else None)
+            if lang != "eng_Latn" and len(vals) == len(english) and vals:
+                summary[f"{spec['id']}::{lang}"]["paired_difference_ci_vs_english"] = paired_bootstrap_mean_ci(vals, english)
     context_window = int(config.get("benchmark", {}).get("context_window", 8192))
     context_summary = {}
     for spec in specs:
