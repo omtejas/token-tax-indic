@@ -13,7 +13,7 @@ Define the practical problem of token-based context and inference costs for mult
 TODO: add verified primary sources on subword tokenization, multilingual language models, FLORES-200, and inference/KV-cache memory. Record access dates and licences.
 
 ## 3. Dataset and Methods
-- Dataset: FLORES-200; exact release/revision, licence, split and row count: PENDING.
+- Dataset: FLORES-200 consolidated Parquet mirror (`yash9439/flores200`); exact repository revision, licence provenance, split and row count to be recorded from run metadata.
 - Languages: English, Hindi, Kannada, Tamil, Telugu.
 - Alignment: sentence IDs; verify one-to-one pairing.
 - Tokenizers: at least five; exact IDs, revisions, vocabulary sizes and licences: PENDING.
