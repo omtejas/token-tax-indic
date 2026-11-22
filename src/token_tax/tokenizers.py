@@ -26,10 +26,9 @@ def load_hf_tokenizer(spec: dict[str, Any]):
         # Avoid Transformers' tokenizer_config.json parser. A truncated 51-byte
         # metadata file can be cached even when the actual GPT-2 vocab is valid.
         from huggingface_hub import hf_hub_download
-        from transformers import GPT2Tokenizer
-        vocab_file = hf_hub_download(model_id or "gpt2", "vocab.json", revision=kwargs["revision"])
-        merges_file = hf_hub_download(model_id or "gpt2", "merges.txt", revision=kwargs["revision"])
-        return GPT2Tokenizer(vocab_file=vocab_file, merges_file=merges_file)
+        from transformers import PreTrainedTokenizerFast
+        tokenizer_file = hf_hub_download(model_id or "gpt2", "tokenizer.json", revision=kwargs["revision"])
+        return PreTrainedTokenizerFast(tokenizer_file=tokenizer_file)
     if tokenizer_id == "mbert" or model_id == "bert-base-multilingual-cased":
         from huggingface_hub import hf_hub_download
         from transformers import BertTokenizerFast
