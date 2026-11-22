@@ -66,6 +66,13 @@ def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) 
             summary[f"{spec['id']}::{lang}"] = summarize_token_counts(vals, english if lang != "eng_Latn" and len(vals) == len(english) else None)
             if lang != "eng_Latn" and len(vals) == len(english) and vals:
                 summary[f"{spec['id']}::{lang}"]["paired_difference_ci_vs_english"] = paired_bootstrap_mean_ci(vals, english)
+    length_summary = {}
+    for spec in specs:
+        for lang in languages:
+            subset = [r for r in records if r["tokenizer_id"] == spec["id"] and r["language_code"] == lang and r["normalization"] == "none"]
+            for bucket in ("short", "medium", "long"):
+                bucket_values = [r["tokens"] for r in subset if r["length_bucket"] == bucket]
+                length_summary[f"{spec['id']}::{lang}::{bucket}"] = summarize_token_counts(bucket_values)
     context_window = int(config.get("benchmark", {}).get("context_window", 8192))
     context_summary = {}
     for spec in specs:
@@ -76,6 +83,6 @@ def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) 
             report = context_window_capacity(counts, context_window)
             report["effective_context_loss_pct_vs_english"] = (100 * (english_capacity["complete_sentences"] - report["complete_sentences"]) / english_capacity["complete_sentences"]) if lang != "eng_Latn" and english_capacity["complete_sentences"] else 0.0
             context_summary[f"{spec['id']}::{lang}"] = report
-    meta = {"run_id": stamp, "status": "measured", "experiment": "tokenizer_comparison", "environment": environment_metadata(), "row_count": len(rows), "record_count": len(records), "summary": summary, "context_efficiency": context_summary, "dataset": {"id": data_cfg.get("name", "Muennighoff/flores200"), "split": data_cfg.get("split", "dev"), "revision": _dataset_revision(data_cfg.get("name", "Muennighoff/flores200"))}, "config": config}
+    meta = {"run_id": stamp, "status": "measured", "experiment": "tokenizer_comparison", "environment": environment_metadata(), "row_count": len(rows), "record_count": len(records), "summary": summary, "length_bucket_summary": length_summary, "context_efficiency": context_summary, "dataset": {"id": data_cfg.get("name", "Muennighoff/flores200"), "split": data_cfg.get("split", "dev"), "revision": _dataset_revision(data_cfg.get("name", "Muennighoff/flores200"))}, "config": config}
     json_path = output / f"run_metadata_{stamp}.json"; json_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     return csv_path, json_path
