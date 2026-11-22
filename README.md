@@ -39,17 +39,17 @@ Install PyTorch using the official selector: https://pytorch.org/get-started/loc
 ## One-command Windows workflow
 Run these from PowerShell in the cloned repository:
 ```powershell
-.\\setup_windows.ps1
-.\\run_experiments.ps1
-.\\run_dashboard.ps1
+.\setup_windows.ps1
+.\run_experiments.ps1
+.\run_dashboard.ps1
 ```
 The setup script creates an isolated Python 3.14 environment, installs dependencies, runs tests and checks CUDA. The experiment script runs the five-tokenizer study followed by the native Qwen GPU prefill benchmark. The dashboard opens locally in your browser.
 
 For individual stages:
 ```powershell
-.\\.venv\\Scripts\\python.exe -m token_tax.cli tokenize --config configs/experiment.yaml
-.\\.venv\\Scripts\\python.exe -m token_tax.cli gpu-benchmark --config configs/experiment.yaml --model-config configs/model.yaml
-.\\.venv\\Scripts\\python.exe -m token_tax.cli failure-analysis --input results\\tokenizer_metrics_<run>.csv
+.\.venv\Scripts\python.exe -m token_tax.cli tokenize --config configs/experiment.yaml
+.\.venv\Scripts\python.exe -m token_tax.cli gpu-benchmark --config configs/experiment.yaml --model-config configs/model.yaml
+.\.venv\Scripts\python.exe -m token_tax.cli failure-analysis --input results\tokenizer_metrics_<run>.csv
 ```
 
 The initial hardware target is an NVIDIA GeForce RTX 4050 Laptop GPU with 6 GB VRAM. Keep VRAM headroom for Windows; start at batch size 1. Actual model choice, precision and memory footprint must be verified on-device.
