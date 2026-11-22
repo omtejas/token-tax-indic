@@ -43,7 +43,7 @@ def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) 
                 for form in config.get("normalization", {}).get("forms", ["none"]):
                     text = normalize_text(original, form)
                     count = count_tokens(tokenizer, text)
-                    records.append({"sentence_id": row["sentence_id"], "tokenizer_id": spec["id"], "tokenizer_model": spec["model_id"], "language_code": lang, "language": languages[lang], "normalization": form, "characters": len(text), "whitespace_words": len(text.split()), "tokens": count, "tokens_per_character": count / max(len(text), 1), "tokens_per_word": count / max(len(text.split()), 1)})
+                    records.append({"sentence_id": row["sentence_id"], "tokenizer_id": spec["id"], "tokenizer_model": spec["model_id"], "tokenizer_revision": getattr(tokenizer, "init_kwargs", {}).get("_commit_hash", spec.get("revision", "main")), "language_code": lang, "language": languages[lang], "normalization": form, "text": text, "characters": len(text), "whitespace_words": len(text.split()), "length_bucket": "short" if len(text.split()) <= 10 else ("medium" if len(text.split()) <= 20 else "long"), "tokens": count, "tokens_per_character": count / max(len(text), 1), "tokens_per_word": count / max(len(text.split()), 1)})
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     csv_path = output / f"tokenizer_metrics_{stamp}.csv"
     with csv_path.open("w", newline="", encoding="utf-8") as f:
