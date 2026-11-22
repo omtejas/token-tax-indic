@@ -37,6 +37,7 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
     lengths=bc.get("max_sequence_lengths",[128,256,512]); batches=bc.get("batch_sizes",[1])
     output=Path(output_dir or experiment_config.get("project",{}).get("output_dir","results")); output.mkdir(parents=True,exist_ok=True)
     records=[]; cfg=model.config
+    baseline_allocated=int(torch.cuda.memory_allocated())
     layers=int(cfg.num_hidden_layers); heads=int(getattr(cfg,"num_key_value_heads",cfg.num_attention_heads)); dim=int(cfg.hidden_size)//int(cfg.num_attention_heads); bytes_per=2 if dtype in (torch.float16,torch.bfloat16) else 4
     for lang, label in languages.items():
         corpus=chr(10).join(r[lang] for r in rows)
@@ -50,8 +51,9 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
                     torch.cuda.synchronize(); torch.cuda.reset_peak_memory_stats(); samples=[]
                     for _ in range(trials):
                         start=time.perf_counter(); model(**inputs,use_cache=True); torch.cuda.synchronize(); samples.append((time.perf_counter()-start)*1000)
-                samples.sort(); p95=samples[min(int(.95*len(samples)),len(samples)-1)]
-                records.append({"model_id":model_id,"model_revision":revision,"resolved_model_revision":getattr(model.config,"_commit_hash",None),"language_code":lang,"language":label,"requested_sequence_length":int(seq_len),"actual_nonpad_tokens":actual,"batch_size":int(batch),"precision":str(dtype).replace("torch.",""),"trials":trials,"prefill_latency_ms_median":float(np.median(samples)),"prefill_latency_ms_p95":float(p95),"prefill_latency_ms_mean":float(np.mean(samples)),"peak_allocated_bytes":int(torch.cuda.max_memory_allocated()),"peak_reserved_bytes":int(torch.cuda.max_memory_reserved()),"throughput_nonpad_tokens_per_second":float(int(batch)*actual/(float(np.median(samples))/1000)), "theoretical_kv_cache_bytes":2*int(batch)*int(seq_len)*layers*heads*dim*bytes_per,"kv_cache_status":"theoretical_from_model_config"})
+                samples.sort(); p95=float(np.percentile(samples,95))
+                peak_allocated=int(torch.cuda.max_memory_allocated())
+                records.append({"model_id":model_id,"model_revision":revision,"resolved_model_revision":getattr(model.config,"_commit_hash",None),"language_code":lang,"language":label,"requested_sequence_length":int(seq_len),"actual_nonpad_tokens":actual,"batch_size":int(batch),"precision":str(dtype).replace("torch.",""),"trials":trials,"prefill_latency_ms_median":float(np.median(samples)),"prefill_latency_ms_p95":float(p95),"prefill_latency_ms_mean":float(np.mean(samples)),"baseline_model_allocated_bytes":baseline_allocated,"peak_allocated_bytes":peak_allocated,"peak_allocated_delta_bytes":max(0,peak_allocated-baseline_allocated),"peak_reserved_bytes":int(torch.cuda.max_memory_reserved()),"throughput_nonpad_tokens_per_second":float(int(batch)*actual/(float(np.median(samples))/1000)), "theoretical_kv_cache_bytes":2*int(batch)*int(seq_len)*layers*heads*dim*bytes_per,"kv_cache_status":"theoretical_from_model_config"})
     stamp=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     csv_path=output/f"gpu_metrics_{stamp}.csv"
     with csv_path.open("w",newline="",encoding="utf-8") as f:
