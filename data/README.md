@@ -1,5 +1,7 @@
 # Dataset handling
 
-Use FLORES-200 through the Hugging Face datasets interface after reviewing the dataset card, source, terms, and current package loading instructions. This project does not redistribute the corpus. Keep downloaded/cache files outside Git (the repository ignores data/raw and data/processed).
+The configured source is the public consolidated Parquet mirror `yash9439/flores200`. It stores one row per aligned FLORES-200 sentence group with language-code columns such as `eng_Latn`, `hin_Deva`, `kan_Knda`, `tam_Taml`, and `tel_Telu`. The development split contains 997 examples according to its dataset card.
 
-The loader uses the English, Hindi, Kannada, Tamil, and Telugu FLORES language configurations and refuses to pair rows if their sentence identifiers do not align. Confirm the dataset schema and revision against the dataset card before a publication run; save the exact dataset revision and split in the run metadata.
+The loader reads a single split and selects the five columns from each row, preserving alignment by construction. It does not execute remote dataset scripts. The run metadata records the dataset repository revision when Hugging Face Hub metadata is available.
+
+FLORES-200 originates from the NLLB/FLORES work and is licensed CC-BY-SA 4.0. The consolidated mirror is a third-party redistribution: verify its provenance and preserve the original attribution/share-alike obligations before distributing results or derived data. Do not commit downloaded corpus files or caches.
