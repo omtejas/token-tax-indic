@@ -15,4 +15,3 @@ scipy>=1.13,<2
 pytest>=8,<10
 # Install a CUDA-enabled PyTorch build separately using the official selector:
 # https://pytorch.org/get-started/locally/
-torch>=2.6
