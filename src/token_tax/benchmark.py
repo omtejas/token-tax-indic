@@ -65,6 +65,8 @@ def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) 
                 for form in config.get("normalization", {}).get("forms", ["none"]):
                     text = normalize_text(original, form)
                     count = count_tokens(tokenizer, text)
+                    if text.strip() and count <= 0:
+                        raise ValueError(f"Tokenizer {spec['id']} returned zero tokens for non-empty sentence {row['sentence_id']}")
                     records.append({"sentence_id": row["sentence_id"], "tokenizer_id": spec["id"], "tokenizer_model": spec["model_id"], "tokenizer_revision": resolved_tokenizer_revision, "language_code": lang, "language": language_names.get(lang, lang), "normalization": form, "text": text, "characters": len(text), "whitespace_words": len(text.split()), "length_bucket": "short" if len(text.split()) <= 10 else ("medium" if len(text.split()) <= 20 else "long"), "tokens": count, "tokens_per_character": count / max(len(text), 1), "tokens_per_word": count / max(len(text.split()), 1)})
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     csv_path = output / f"tokenizer_metrics_{stamp}.csv"
