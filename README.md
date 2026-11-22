@@ -16,7 +16,8 @@ A reproducible study of equivalent English, Hindi, Kannada, Tamil, and Telugu te
 - Tokenizers: five public Hugging Face tokenizers configured in `configs/experiment.yaml`. Verify revisions, licenses and language coverage before the final run.
 - GPU: model and native tokenizer pair only. Cross-model differences are system-level, not isolated tokenizer causal effects.
 - Ablations: Unicode normalization (none/NFC) and sentence length groups.
-- Statistics: paired sentence-level comparisons and bootstrap confidence intervals. Do not assign random seeds to deterministic token counts.
+- Statistics: paired sentence-level token ratios/differences with bootstrap confidence intervals. Do not assign random seeds to deterministic token counts.
+- Context loss: percentage fewer complete parallel sentences that fit in a fixed 8,192-token budget versus English, under the same tokenizer.
 
 ## Windows setup
 Python 3.14 is installed on the target PC. Current PyTorch Windows documentation lists Python 3.10–3.14 support; use a clean virtual environment and install a CUDA-enabled wheel from the official selector.
@@ -35,13 +36,20 @@ If an optional dependency has no Python 3.14 wheel in your environment, use Pyth
 
 Install PyTorch using the official selector: https://pytorch.org/get-started/locally/ . The CUDA version printed by `nvidia-smi` is the driver's supported runtime level; it is not an instruction to install the CUDA Toolkit separately.
 
-## Run experiments
+## One-command Windows workflow
+Run these from PowerShell in the cloned repository:
 ```powershell
-python -m token_tax.cli tokenize --config configs/experiment.yaml
-# After checking model access, licence, revision and VRAM:
-# set model.enabled: true in configs/model.yaml
-python -m token_tax.cli gpu-benchmark --config configs/experiment.yaml --model-config configs/model.yaml
-streamlit run app.py
+.\\setup_windows.ps1
+.\\run_experiments.ps1
+.\\run_dashboard.ps1
+```
+The setup script creates an isolated Python 3.14 environment, installs dependencies, runs tests and checks CUDA. The experiment script runs the five-tokenizer study followed by the native Qwen GPU prefill benchmark. The dashboard opens locally in your browser.
+
+For individual stages:
+```powershell
+.\\.venv\\Scripts\\python.exe -m token_tax.cli tokenize --config configs/experiment.yaml
+.\\.venv\\Scripts\\python.exe -m token_tax.cli gpu-benchmark --config configs/experiment.yaml --model-config configs/model.yaml
+.\\.venv\\Scripts\\python.exe -m token_tax.cli failure-analysis --input results\\tokenizer_metrics_<run>.csv
 ```
 
 The initial hardware target is an NVIDIA GeForce RTX 4050 Laptop GPU with 6 GB VRAM. Keep VRAM headroom for Windows; start at batch size 1. Actual model choice, precision and memory footprint must be verified on-device.
