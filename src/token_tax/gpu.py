@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 from .data import load_flores_parallel, LANGUAGES, resolve_languages
 from .tokenizers import load_hf_tokenizer
-from .benchmark import environment_metadata, _hub_model_revision
+from .benchmark import environment_metadata, _hub_model_revision, _dataset_revision
 
 def gpu_info():
     try: import torch
@@ -58,7 +58,7 @@ def run_gpu_benchmark(experiment_config, model_config, output_dir=None):
     csv_path=output/f"gpu_metrics_{stamp}.csv"
     with csv_path.open("w",newline="",encoding="utf-8") as f:
         writer=csv.DictWriter(f,fieldnames=list(records[0])); writer.writeheader(); writer.writerows(records)
-    metadata={"run_id":stamp,"status":"measured","experiment":"native_model_prefill","environment":environment_metadata(),"model":{"id":model_id,"requested_revision":revision,"resolved_revision":getattr(model.config,"_commit_hash",None),"tokenizer_resolved_revision":getattr(tok,"init_kwargs",{}).get("_commit_hash") or _hub_model_revision(model_id,revision),"config":model.config.to_dict()},"dataset":{"id":dc.get("name","yash9439/flores200"),"split":dc.get("split","dev")},"records":len(records),"warmup_runs":warmups,"timed_runs":trials,"results_file":str(csv_path)}
+    metadata={"run_id":stamp,"status":"measured","experiment":"native_model_prefill","environment":environment_metadata(),"model":{"id":model_id,"requested_revision":revision,"resolved_revision":getattr(model.config,"_commit_hash",None),"tokenizer_resolved_revision":getattr(tok,"init_kwargs",{}).get("_commit_hash") or _hub_model_revision(model_id,revision),"config":model.config.to_dict()},"dataset":{"id":dc.get("name","yash9439/flores200"),"split":dc.get("split","dev"),"revision":_dataset_revision(dc.get("name","yash9439/flores200")),"rows":len(rows)},"records":len(records),"config":{"max_sequence_lengths":lengths,"batch_sizes":batches,"precision":str(dtype).replace("torch.","")},"warmup_runs":warmups,"timed_runs":trials,"results_file":str(csv_path)}
     meta_path=output/f"gpu_metadata_{stamp}.json"; meta_path.write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding="utf-8")
     del model; torch.cuda.empty_cache()
     return csv_path,meta_path
