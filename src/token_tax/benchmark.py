@@ -3,7 +3,7 @@ import csv, json, platform, subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from importlib.metadata import PackageNotFoundError, version
-from .data import load_flores_parallel, LANGUAGES
+from .data import load_flores_parallel, LANGUAGES, resolve_languages
 from .metrics import normalize_text, summarize_token_counts, context_window_capacity
 from .statistics import paired_bootstrap_mean_ci
 from .tokenizers import load_hf_tokenizer, count_tokens
@@ -39,9 +39,7 @@ def _dataset_revision(dataset_id: str):
 def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) -> tuple[Path, Path]:
     output = Path(output_dir or config.get("project", {}).get("output_dir", "results")); output.mkdir(parents=True, exist_ok=True)
     data_cfg = config.get("dataset", {})
-    language_map = data_cfg.get("languages", LANGUAGES)
-    languages = list(language_map.keys()) if isinstance(language_map, dict) else list(language_map)
-    language_names = language_map if isinstance(language_map, dict) else {code: LANGUAGES.get(code, code) for code in languages}
+    languages, language_names = resolve_languages(data_cfg.get("languages"))
     rows = load_flores_parallel(languages, data_cfg.get("split", "dev"), data_cfg.get("max_parallel_rows", 300), data_cfg.get("name", "yash9439/flores200"))
     specs = config.get("tokenizers", {}).get("candidates", [])
     if len(specs) < 5:
