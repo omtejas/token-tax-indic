@@ -44,7 +44,7 @@ Run these from PowerShell in the cloned repository:
 .\run_experiments.ps1
 .\run_dashboard.ps1
 ```
-The setup script creates an isolated Python 3.14 environment, installs dependencies, runs tests and checks CUDA. The experiment script runs the five-tokenizer study followed by the native Qwen GPU prefill benchmark. The dashboard opens locally in your browser.
+The setup script creates an isolated Python 3.14 environment, installs dependencies, runs tests and checks CUDA. The full-study script runs the five-tokenizer study, three repeated native Qwen GPU measurements with 16-token generation and best-effort telemetry, then tokenizer failure diagnostics. The dashboard opens locally in your browser.
 
 For individual stages:
 ```powershell
@@ -72,4 +72,4 @@ Each run should retain its git revision, exact dataset/model/tokenizer revisions
 ## Limitations
 Token counts are not translation quality. Different model families differ in architecture and training. GPU timings depend on hardware, drivers, thermals and background load. KV-cache estimates must use exact attention architecture (including GQA/MQA) and be distinguished from measured memory.
 
-**Status:** foundation implementation; full dataset and local GPU runs are pending on the target PC.
+**Status:** implementation includes the repeated-run benchmark and dashboard; execute the latest full-study script on the target PC and preserve its generated artifacts before claiming final results.
