@@ -41,7 +41,10 @@ tokenizers:
 benchmark:
   warmup_runs: 3
   timed_runs: 20
-  batch_sizes: [1, 2, 4]
+  repetitions: 3
+  generation_tokens: 16
+  telemetry_interval_seconds: 0.25
+  batch_sizes: [1]
   max_sequence_lengths: [128, 256, 512]
   synchronize_cuda: true
   context_window: 8192
