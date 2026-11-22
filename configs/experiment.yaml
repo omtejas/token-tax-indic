@@ -44,3 +44,4 @@ benchmark:
   batch_sizes: [1, 2, 4]
   max_sequence_lengths: [128, 256, 512]
   synchronize_cuda: true
+  context_window: 8192
