@@ -20,13 +20,15 @@ def load_hf_tokenizer(spec: dict[str, Any]):
         "revision": spec.get("revision", "main"),
         "trust_remote_code": False,
     }
-    if spec["model_id"].lower() == "gpt2":
+    model_id = str(spec.get("model_id", "")).strip()
+    tokenizer_id = str(spec.get("id", "")).strip().lower()
+    if tokenizer_id == "gpt2" or model_id.lower().rstrip("/").endswith("gpt2"):
         # Avoid Transformers' tokenizer_config.json parser. A truncated 51-byte
         # metadata file can be cached even when the actual GPT-2 vocab is valid.
         from huggingface_hub import hf_hub_download
         from transformers import GPT2TokenizerFast
-        vocab_file = hf_hub_download("gpt2", "vocab.json", revision=kwargs["revision"])
-        merges_file = hf_hub_download("gpt2", "merges.txt", revision=kwargs["revision"])
+        vocab_file = hf_hub_download(model_id or "gpt2", "vocab.json", revision=kwargs["revision"])
+        merges_file = hf_hub_download(model_id or "gpt2", "merges.txt", revision=kwargs["revision"])
         return GPT2TokenizerFast(vocab_file=vocab_file, merges_file=merges_file)
     try:
         return AutoTokenizer.from_pretrained(spec["model_id"], **kwargs)
