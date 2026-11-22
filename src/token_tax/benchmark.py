@@ -40,7 +40,7 @@ def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) 
     output = Path(output_dir or config.get("project", {}).get("output_dir", "results")); output.mkdir(parents=True, exist_ok=True)
     data_cfg = config.get("dataset", {})
     languages = list(data_cfg.get("languages", LANGUAGES))
-    rows = load_flores_parallel(languages, data_cfg.get("split", "dev"), data_cfg.get("max_parallel_rows", 300), data_cfg.get("name", "Muennighoff/flores200"))
+    rows = load_flores_parallel(languages, data_cfg.get("split", "dev"), data_cfg.get("max_parallel_rows", 300), data_cfg.get("name", "yash9439/flores200"))
     specs = config.get("tokenizers", {}).get("candidates", [])
     if len(specs) < 5:
         raise ValueError("Configure at least five tokenizer candidates for the required study")
@@ -83,6 +83,6 @@ def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) 
             report = context_window_capacity(counts, context_window)
             report["effective_context_loss_pct_vs_english"] = (100 * (english_capacity["complete_sentences"] - report["complete_sentences"]) / english_capacity["complete_sentences"]) if lang != "eng_Latn" and english_capacity["complete_sentences"] else 0.0
             context_summary[f"{spec['id']}::{lang}"] = report
-    meta = {"run_id": stamp, "status": "measured", "experiment": "tokenizer_comparison", "environment": environment_metadata(), "row_count": len(rows), "record_count": len(records), "summary": summary, "length_bucket_summary": length_summary, "context_efficiency": context_summary, "dataset": {"id": data_cfg.get("name", "Muennighoff/flores200"), "split": data_cfg.get("split", "dev"), "revision": _dataset_revision(data_cfg.get("name", "Muennighoff/flores200"))}, "config": config}
+    meta = {"run_id": stamp, "status": "measured", "experiment": "tokenizer_comparison", "environment": environment_metadata(), "row_count": len(rows), "record_count": len(records), "summary": summary, "length_bucket_summary": length_summary, "context_efficiency": context_summary, "dataset": {"id": data_cfg.get("name", "yash9439/flores200"), "split": data_cfg.get("split", "dev"), "revision": _dataset_revision(data_cfg.get("name", "yash9439/flores200"))}, "config": config}
     json_path = output / f"run_metadata_{stamp}.json"; json_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     return csv_path, json_path
