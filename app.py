@@ -1,110 +1,125 @@
-"""Local, results-first dashboard for The Token Tax study."""
+"""Results-first dashboard for The Token Tax; displays measured files only."""
 from __future__ import annotations
-
+import json
 from pathlib import Path
-
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-RESULTS_DIR = Path("results")
-TOKENIZER_COLUMNS = {"language", "language_code", "tokenizer_id", "normalization", "tokens"}
-GPU_COLUMNS = {"language", "requested_sequence_length", "batch_size", "prefill_latency_ms_median"}
+ROOT = Path("results")
 
+def newest_valid(pattern: str, required=()):
+    for path in sorted(ROOT.glob(pattern), key=lambda p: p.name, reverse=True):
+        try:
+            frame = pd.read_csv(path)
+            if set(required).issubset(frame.columns) and not frame.empty:
+                return path, frame
+        except (OSError, pd.errors.ParserError, UnicodeDecodeError):
+            continue
+    return None, None
 
-def available_runs(pattern: str) -> list[Path]:
-    return sorted(RESULTS_DIR.glob(pattern), reverse=True)
+def newest_json(pattern: str):
+    for path in sorted(ROOT.glob(pattern), key=lambda p: p.name, reverse=True):
+        try:
+            return path, json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+    return None, None
 
-
-def read_result(path: Path, required: set[str]) -> pd.DataFrame | None:
-    try:
-        frame = pd.read_csv(path)
-    except (OSError, pd.errors.ParserError, UnicodeDecodeError) as exc:
-        st.error(f"Could not read {path.name}: {exc}")
-        return None
-    missing = required - set(frame.columns)
-    if missing:
-        st.error(f"{path.name} is not compatible. Missing: {', '.join(sorted(missing))}.")
-        return None
-    return frame
-
-
-def empty_state() -> None:
-    st.markdown("### Ready for your first measured run")
-    st.write("The interface is ready. It intentionally stays empty until it finds a CSV created by the experiment pipeline.")
-    st.code(".\\run_experiments.ps1", language="powershell")
-    st.caption("Results remain local by default. No sample or estimated benchmark values are shown as measurements.")
-
-
-def tokenizer_dashboard(paths: list[Path]) -> None:
-    st.subheader("Tokenizer analysis")
-    if not paths:
-        empty_state()
-        return
-    path = st.selectbox("Tokenizer result", paths, format_func=lambda item: item.name, key="tokenizer_run")
-    data = read_result(path, TOKENIZER_COLUMNS)
-    if data is None:
-        return
-    data = data[data["normalization"].eq("none")].copy()
-    if data.empty:
-        st.warning("This run contains no unnormalized records to compare.")
-        return
-    left, right = st.columns(2)
-    with left:
-        languages = st.multiselect("Languages", sorted(data.language.dropna().unique()), default=sorted(data.language.dropna().unique()))
-    with right:
-        tokenizers = st.multiselect("Tokenizers", sorted(data.tokenizer_id.dropna().unique()), default=sorted(data.tokenizer_id.dropna().unique()))
-    view = data[data.language.isin(languages) & data.tokenizer_id.isin(tokenizers)]
-    if view.empty:
-        st.info("Choose at least one language and tokenizer to display results.")
-        return
-    summary = view.groupby(["language", "tokenizer_id"], as_index=False).agg(
-        mean_tokens=("tokens", "mean"), median_tokens=("tokens", "median"), total_tokens=("tokens", "sum"), sentences=("sentence_id", "nunique")
-    )
-    a, b, c = st.columns(3)
-    a.metric("Aligned sentences", f"{view.sentence_id.nunique():,}")
-    b.metric("Tokenizer families", f"{view.tokenizer_id.nunique():,}")
-    c.metric("Mean tokens / sentence", f"{summary.mean_tokens.mean():.2f}")
-    chart = px.bar(summary, x="language", y="mean_tokens", color="tokenizer_id", barmode="group", title="Tokenization cost across aligned sentences", labels={"mean_tokens": "Mean tokens per sentence", "language": "Language", "tokenizer_id": "Tokenizer"})
-    chart.update_layout(legend_title_text="Tokenizer", margin=dict(l=0, r=0, t=50, b=0))
-    st.plotly_chart(chart, use_container_width=True)
-    st.dataframe(summary.sort_values(["language", "mean_tokens"]), use_container_width=True, hide_index=True)
-    st.download_button("Download filtered tokenizer data", view.to_csv(index=False).encode("utf-8"), "token_tax_tokenizer_results.csv", "text/csv")
-
-
-def gpu_dashboard(paths: list[Path]) -> None:
-    st.subheader("GPU prefill benchmark")
-    if not paths:
-        st.info("No measured GPU run is available yet. Run the benchmark on a CUDA-enabled device after setup completes.")
-        return
-    path = st.selectbox("GPU result", paths, format_func=lambda item: item.name, key="gpu_run")
-    data = read_result(path, GPU_COLUMNS)
-    if data is None:
-        return
-    a, b, c = st.columns(3)
-    a.metric("Measured scenarios", f"{len(data):,}")
-    b.metric("Median prefill latency", f"{data.prefill_latency_ms_median.median():.1f} ms")
-    throughput = data.get("throughput_nonpad_tokens_per_second")
-    c.metric("Median throughput", f"{throughput.median():.1f} tok/s" if throughput is not None else "Unavailable")
-    chart = px.line(data, x="requested_sequence_length", y="prefill_latency_ms_median", color="language", symbol="batch_size", markers=True, title="Measured GPU prefill latency", labels={"requested_sequence_length": "Requested sequence length", "prefill_latency_ms_median": "Median prefill latency (ms)"})
-    chart.update_layout(margin=dict(l=0, r=0, t=50, b=0))
-    st.plotly_chart(chart, use_container_width=True)
-    st.dataframe(data, use_container_width=True, hide_index=True)
-    st.download_button("Download GPU data", data.to_csv(index=False).encode("utf-8"), "token_tax_gpu_results.csv", "text/csv")
-
-
-st.set_page_config(page_title="The Token Tax", page_icon="◈", layout="wide", initial_sidebar_state="expanded")
-st.markdown("""<style>.stApp { background: #f7f8fc; } [data-testid="stMetricValue"] { color: #5348d8; }</style>""", unsafe_allow_html=True)
+st.set_page_config(page_title="The Token Tax", page_icon="◈", layout="wide")
 st.title("The Token Tax")
-st.caption("A reproducible dashboard for multilingual tokenizer efficiency and native-model GPU measurements.")
-with st.sidebar:
-    st.header("Study status")
-    tokenizer_runs, gpu_runs = available_runs("tokenizer_metrics_*.csv"), available_runs("gpu_metrics_*.csv")
-    st.success(f"{len(tokenizer_runs)} tokenizer run(s) found") if tokenizer_runs else st.warning("No tokenizer run found")
-    st.success(f"{len(gpu_runs)} GPU run(s) found") if gpu_runs else st.warning("No GPU run found")
-    st.divider()
-    st.caption("Only files generated by this project are visualized. GPU figures are hardware-specific measurements, not general performance claims.")
+st.caption("Indic-language tokenizer efficiency · native-model GPU inference · reproducible measurements")
+tok_path, tok = newest_valid("tokenizer_metrics_*.csv", {"sentence_id","tokenizer_id","language_code","normalization","tokens"})
+gpu_path, gpu = newest_valid("gpu_metrics_*.csv", {"language_code","requested_sequence_length","batch_size"})
+rep_path, reps = newest_valid("gpu_repetition_summary_*.csv", {"language_code","requested_sequence_length","batch_size","repetitions"})
+fail_path, failures = newest_valid("failure_examples.csv", {"tokenizer_id","language_code","sentence_id"})
+meta_path, meta = newest_json("gpu_metadata_*.json")
+run_path, run_meta = newest_json("run_metadata_*.json")
 
-tokenizer_dashboard(tokenizer_runs)
-st.divider()
-gpu_dashboard(gpu_runs)
+with st.sidebar:
+    st.subheader("Latest valid run")
+    st.write("Tokenizer:", tok_path.name if tok_path else "Not found")
+    st.write("GPU:", gpu_path.name if gpu_path else "Not found")
+    st.caption("Newest parseable result files are selected automatically.")
+
+tabs = st.tabs(["Overview","Tokenizer comparison","Normalization ablation","GPU prefill/decode","Repeated-run statistics","Failure analysis","Reproducibility metadata"])
+
+with tabs[0]:
+    a,b,c,d=st.columns(4)
+    a.metric("Tokenizer run", "Ready" if tok is not None else "Missing")
+    b.metric("GPU run", "Ready" if gpu is not None else "Missing")
+    c.metric("GPU repetitions", int(reps.repetitions.min()) if reps is not None else "Pending")
+    d.metric("Languages", int(tok.language_code.nunique()) if tok is not None else 0)
+    if tok is not None:
+        st.write(f"Tokenizer rows: **{len(tok):,}** · aligned sentences: **{tok.sentence_id.nunique():,}** · tokenizers: **{tok.tokenizer_id.nunique()}**")
+    if gpu is not None:
+        st.write(f"GPU records: **{len(gpu):,}** · models: **{gpu.model_id.nunique() if 'model_id' in gpu else 'legacy run'}**")
+    st.info("Only locally generated experiment artifacts are displayed. Empty or unavailable telemetry is never replaced with fabricated values.")
+
+with tabs[1]:
+    st.subheader("Tokenizer comparison")
+    if tok is None: st.warning("No valid tokenizer CSV found.")
+    else:
+        base=tok[tok.normalization.eq("none")]
+        summary=base.groupby(["tokenizer_id","language_code"],as_index=False).agg(mean_tokens=("tokens","mean"),median_tokens=("tokens","median"),sentences=("sentence_id","nunique"))
+        fig=px.bar(summary,x="language_code",y="mean_tokens",color="tokenizer_id",barmode="group",labels={"mean_tokens":"Mean tokens / sentence","language_code":"Language"})
+        st.plotly_chart(fig,width="stretch")
+        st.dataframe(summary,width="stretch",hide_index=True)
+        st.download_button("Export tokenizer summary",summary.to_csv(index=False),"tokenizer_summary.csv","text/csv")
+
+with tabs[2]:
+    st.subheader("Unicode normalization ablation")
+    if tok is None or not {"none","NFC"}.issubset(set(tok.normalization.dropna())):
+        st.warning("Both none and NFC normalization records are required.")
+    else:
+        ab=tok.groupby(["tokenizer_id","language_code","normalization"],as_index=False).agg(mean_tokens=("tokens","mean"),median_tokens=("tokens","median"),sentences=("sentence_id","nunique"))
+        pivot=ab.pivot_table(index=["tokenizer_id","language_code"],columns="normalization",values="mean_tokens").reset_index()
+        if {"none","NFC"}.issubset(pivot.columns):
+            pivot["NFC_minus_none"]=pivot["NFC"]-pivot["none"]
+            pivot["NFC_percent_change"]=100*pivot["NFC_minus_none"]/pivot["none"].replace(0,pd.NA)
+        st.dataframe(pivot,width="stretch",hide_index=True)
+        st.plotly_chart(px.bar(ab,x="language_code",y="mean_tokens",color="normalization",barmode="group",facet_col="tokenizer_id"),width="stretch")
+
+with tabs[3]:
+    st.subheader("GPU prefill and generation")
+    if gpu is None: st.warning("No valid GPU metrics CSV found.")
+    else:
+        latency_cols=[c for c in ["prefill_latency_ms_median","multi_token_generation_end_to_end_latency_ms_median","one_token_generation_end_to_end_latency_ms_median","decode_latency_ms_median"] if c in gpu]
+        if latency_cols:
+            long=gpu.melt(id_vars=["language_code","requested_sequence_length","batch_size"],value_vars=latency_cols,var_name="stage",value_name="latency_ms")
+            st.plotly_chart(px.line(long,x="requested_sequence_length",y="latency_ms",color="stage",facet_col="language_code",markers=True),width="stretch")
+        st.dataframe(gpu,width="stretch",hide_index=True)
+        st.download_button("Export GPU measurements",gpu.to_csv(index=False),"gpu_measurements.csv","text/csv")
+
+with tabs[4]:
+    st.subheader("Repeated-run statistics")
+    if reps is None: st.warning("Repeated-run summary not found. Legacy one-run CSVs do not count as repetitions.")
+    else:
+        st.dataframe(reps,width="stretch",hide_index=True)
+        metrics=[c for c in reps.columns if c.endswith("_mean") and c.removesuffix("_mean")+"_std" in reps.columns]
+        if metrics:
+            metric=st.selectbox("Metric",metrics)
+            st.plotly_chart(px.bar(reps,x="language_code",y=metric,error_y=metric.removesuffix("_mean")+"_std",color="requested_sequence_length",barmode="group"),width="stretch")
+        st.download_button("Export repetition statistics",reps.to_csv(index=False),"gpu_repetition_statistics.csv","text/csv")
+
+with tabs[5]:
+    st.subheader("Failure analysis")
+    if fail_path is not None:
+        st.dataframe(failures,width="stretch",hide_index=True)
+        st.download_button("Export failure examples",failures.to_csv(index=False),"failure_examples.csv","text/csv")
+    else:
+        st.warning("No failure_examples.csv found. Generate high-fertility examples and add Unicode, truncation, empty-text and GPU-OOM diagnostics as they are captured.")
+    if gpu is not None:
+        if "peak_allocated_bytes" in gpu:
+            st.write("GPU memory failures are not inferred from successful rows; inspect run logs for OOM records.")
+
+with tabs[6]:
+    st.subheader("Reproducibility metadata")
+    if meta is not None:
+        st.markdown("**GPU run metadata**")
+        st.json(meta)
+    elif run_meta is not None:
+        st.json(run_meta)
+    else:
+        st.warning("No run metadata JSON found.")
+    if meta_path: st.caption(f"Source: {meta_path.name}")
