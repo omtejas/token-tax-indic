@@ -9,7 +9,9 @@ if ($LASTEXITCODE -ne 0) { throw "pip upgrade failed." }
 & $python -m pip install -r requirements.txt
 if ($LASTEXITCODE -ne 0) { throw "Project dependency installation failed." }
 Write-Host "Installing the CUDA 13.0 PyTorch wheel for your NVIDIA driver..."
-& $python -m pip install torch --index-url https://download.pytorch.org/whl/cu130
+& $python -m pip uninstall -y torch
+if ($LASTEXITCODE -ne 0) { throw "Could not remove the existing PyTorch package from the project environment." }
+& $python -m pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cu130
 if ($LASTEXITCODE -ne 0) { throw "CUDA PyTorch installation failed. Check the official PyTorch selector." }
 & $python -m pip install -e .
 if ($LASTEXITCODE -ne 0) { throw "Editable project installation failed." }
