@@ -28,6 +28,14 @@ def environment_metadata() -> dict:
     return {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "git_revision": git_revision, "python": platform.python_version(), "platform": platform.platform(), "packages": packages, "gpu": gpu}
 
 
+def _hub_model_revision(model_id: str, requested_revision: str = "main"):
+    try:
+        from huggingface_hub import HfApi
+        return HfApi().model_info(model_id, revision=requested_revision).sha
+    except Exception:
+        return requested_revision
+
+
 def _dataset_revision(dataset_id: str):
     try:
         from huggingface_hub import HfApi
@@ -47,13 +55,14 @@ def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) 
     records = []
     for spec in specs:
         tokenizer = load_hf_tokenizer(spec)
+        resolved_tokenizer_revision = getattr(tokenizer, "init_kwargs", {}).get("_commit_hash") or _hub_model_revision(spec["model_id"], spec.get("revision", "main"))
         for row in rows:
             for lang in languages:
                 original = row[lang]
                 for form in config.get("normalization", {}).get("forms", ["none"]):
                     text = normalize_text(original, form)
                     count = count_tokens(tokenizer, text)
-                    records.append({"sentence_id": row["sentence_id"], "tokenizer_id": spec["id"], "tokenizer_model": spec["model_id"], "tokenizer_revision": getattr(tokenizer, "init_kwargs", {}).get("_commit_hash", spec.get("revision", "main")), "language_code": lang, "language": language_names.get(lang, lang), "normalization": form, "text": text, "characters": len(text), "whitespace_words": len(text.split()), "length_bucket": "short" if len(text.split()) <= 10 else ("medium" if len(text.split()) <= 20 else "long"), "tokens": count, "tokens_per_character": count / max(len(text), 1), "tokens_per_word": count / max(len(text.split()), 1)})
+                    records.append({"sentence_id": row["sentence_id"], "tokenizer_id": spec["id"], "tokenizer_model": spec["model_id"], "tokenizer_revision": resolved_tokenizer_revision, "language_code": lang, "language": language_names.get(lang, lang), "normalization": form, "text": text, "characters": len(text), "whitespace_words": len(text.split()), "length_bucket": "short" if len(text.split()) <= 10 else ("medium" if len(text.split()) <= 20 else "long"), "tokens": count, "tokens_per_character": count / max(len(text), 1), "tokens_per_word": count / max(len(text.split()), 1)})
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     csv_path = output / f"tokenizer_metrics_{stamp}.csv"
     with csv_path.open("w", newline="", encoding="utf-8") as f:
