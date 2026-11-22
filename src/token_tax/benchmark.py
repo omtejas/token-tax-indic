@@ -29,7 +29,7 @@ def run_tokenizer_benchmark(config: dict, output_dir: str | Path | None = None) 
     output = Path(output_dir or config.get("project", {}).get("output_dir", "results")); output.mkdir(parents=True, exist_ok=True)
     data_cfg = config.get("dataset", {})
     languages = list(data_cfg.get("languages", LANGUAGES))
-    rows = load_flores_parallel(languages, data_cfg.get("split", "dev"), data_cfg.get("max_parallel_rows", 300))
+    rows = load_flores_parallel(languages, data_cfg.get("split", "dev"), data_cfg.get("max_parallel_rows", 300), data_cfg.get("name", "Muennighoff/flores200"))
     specs = config.get("tokenizers", {}).get("candidates", [])
     if len(specs) < 5:
         raise ValueError("Configure at least five tokenizer candidates for the required study")
